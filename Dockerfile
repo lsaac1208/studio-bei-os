@@ -2,9 +2,12 @@
 # ─────────────────────────────────────────────────────────────
 # Studio Bei OS · 多阶段镜像 · 基于 node:22-alpine
 # - deps: 装依赖（含 devDeps，供 build 用）
+# - migrator: 跑 drizzle-kit migrate（依赖 deps 的 node_modules + 源码）
 # - builder: 跑 next build，输出 .next/standalone
-# - migrator: 跟 builder 共享，专门跑 drizzle-kit push
 # - runner: 仅含 standalone + node_modules 子集，最小运行时
+#
+# Stage 顺序对 classic docker builder 至关重要：必须把 migrator 放在 builder 之前，
+# 否则 build target=migrator 会重跑 pnpm build。详见 Stage 2 注释。
 # ─────────────────────────────────────────────────────────────
 
 # ============= Stage 1: deps =============
@@ -22,7 +25,30 @@ COPY package.json pnpm-lock.yaml ./
 ENV NODE_OPTIONS="--max-old-space-size=512"
 RUN pnpm install --frozen-lockfile --prefer-offline --child-concurrency=1
 
-# ============= Stage 2: builder =============
+# ============= Stage 2: migrator =============
+# 跑 drizzle-kit migrate / seed*.ts。轻量级，只需 node_modules + 源码。
+#
+# 为什么放在 builder 之前？
+#   ECS 用 classic docker builder（无 BuildKit），build target=migrator 时会
+#   **顺序构建 Dockerfile 中此 target 之前的所有 stage**（忽略实际 FROM 依赖）。
+#   若 migrator 在 builder 之后，build migrate 会重跑一遍 `pnpm build`，浪费 ~10 min
+#   并触发 OOM 风险。把 migrator 放 builder 前面：build migrate 只跑 deps→migrator。
+#   build app（target=runner）则跑 deps→migrator→builder→runner，多 1 个轻量 layer
+#   （~30s），但 runner 无 migrator 依赖，最终镜像大小不变。
+#
+# 首次切到本流程前，必须用 scripts/baseline-migrations.sh 把现有 DB 标记为 0000_init 已应用
+# 详见 docs/migrations.md
+FROM node:22-alpine AS migrator
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@10 --activate
+COPY --from=deps /app/node_modules ./node_modules
+# 源码全量拷（dockerignore 排除 .next / node_modules / .git 等）；
+# seed*.ts 引用 @/lib/* 需要 tsconfig + lib/，所以全拷最稳
+COPY . .
+ENV NODE_ENV=production
+CMD ["./node_modules/.bin/drizzle-kit", "migrate"]
+
+# ============= Stage 3: builder =============
 FROM node:22-alpine AS builder
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10 --activate
@@ -55,25 +81,6 @@ ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN \
     NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 
 RUN pnpm build
-
-# ============= Stage 3: migrator =============
-# 跑 drizzle-kit migrate / seed*.ts。
-# 关键：从 deps 继承（含 node_modules），而不是从 builder 继承 —
-#   classic docker builder（无 buildx/buildkit）在两次独立的
-#   `docker compose build` 调用之间不可靠地复用 builder 阶段缓存，会触发
-#   migrator stage 重新跑一次 `pnpm build`，1.7G ECS 上等于第二轮 OOM 风险。
-#   migrator 不需要 .next 产物，只需 node_modules + 源码（含 db/、lib/、drizzle.config.ts）。
-# 首次切到本流程前，必须用 scripts/baseline-migrations.sh 把现有 DB 标记为 0000_init 已应用
-# 详见 docs/migrations.md
-FROM node:22-alpine AS migrator
-WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@10 --activate
-COPY --from=deps /app/node_modules ./node_modules
-# 源码全量拷（dockerignore 排除 .next / node_modules / .git 等）；
-# seed*.ts 引用 @/lib/* 需要 tsconfig + lib/，所以全拷最稳
-COPY . .
-ENV NODE_ENV=production
-CMD ["./node_modules/.bin/drizzle-kit", "migrate"]
 
 # ============= Stage 4: runner =============
 FROM node:22-alpine AS runner
