@@ -36,6 +36,13 @@ step "2/5 构建 app + migrator 镜像"
 export SENTRY_AUTH_TOKEN="${SENTRY_AUTH_TOKEN:-}"
 export APP_VERSION="${DEPLOY_SHA:-dev}"
 
+# 1.7G ECS 防 OOM：build 期内存吃紧，先停旧 app 容器释放 ~250MB
+# 旧 app 不停 → next/webpack worker 跟旧进程共享 RAM，触发 swap thrashing + SIGABRT
+# 代价：build 期间（~10 min）站点暂时不可用；step 5/5 会用新镜像重启
+# postgres 不停（migrator 还要连）；6yaos 别人项目，不动
+echo "  → 停掉旧 app 容器以释放 build 内存"
+docker compose stop app || true
+
 # 注意：必须同时 build migrate，否则 schema 改动后 migrator 用旧 schema.ts，
 # drizzle-kit push 会错误地报告 "no changes detected"
 docker compose build app

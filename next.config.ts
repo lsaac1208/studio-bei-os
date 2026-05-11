@@ -8,7 +8,15 @@ const nextConfig: NextConfig = {
   // 反代后真实 IP 通过 X-Forwarded-For 获取
   // 自管 Nginx → 127.0.0.1:13001 → Next.js
   experimental: {
-    // serverActions 默认开启，无需配置
+    // 1.7G ECS 防 build OOM：降 webpack 编译期内存峰值（次要代价：编译时间略增）
+    // 参考 https://nextjs.org/docs/app/guides/memory-usage#try-experimentalwebpackmemoryoptimizations
+    webpackMemoryOptimizations: true,
+  },
+  typescript: {
+    // CI 的 lint-typecheck job 已经独立跑过 `tsc --noEmit`，
+    // build 阶段再跑一次只是徒增 ~30% 内存占用，在 1.7G ECS 上会被 OOM 撞死。
+    // 类型错误的拦截责任由 CI 兜底；这里只关心是否能 emit 产物。
+    ignoreBuildErrors: true,
   },
 };
 
