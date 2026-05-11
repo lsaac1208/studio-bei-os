@@ -31,10 +31,30 @@ if [ -d .git ]; then
 fi
 
 step "2/5 构建 app + migrator 镜像"
+# Sentry 构建期变量（DSN / ORG / PROJECT 从 .env 读；TOKEN 从 SSH env 读）
+# 显式 export 确保 docker compose 能读到（即便 .env 里漏配也能从 shell 兜住）
+export SENTRY_AUTH_TOKEN="${SENTRY_AUTH_TOKEN:-}"
+export APP_VERSION="${DEPLOY_SHA:-dev}"
+
 # 注意：必须同时 build migrate，否则 schema 改动后 migrator 用旧 schema.ts，
 # drizzle-kit push 会错误地报告 "no changes detected"
 docker compose build app
 docker compose --profile migrate build migrate
+
+# 额外用 git SHA 给 app 镜像打 tag，方便回滚（DEPLOY_SHA 由 deploy.yml SSH 注入）
+# 回滚命令示例：
+#   docker tag studio-bei-os:<旧SHA> studio-bei-os:latest && docker compose up -d app
+if [ -n "${DEPLOY_SHA:-}" ]; then
+  docker tag studio-bei-os:latest "studio-bei-os:${DEPLOY_SHA}"
+  echo "  → 已打 tag: studio-bei-os:${DEPLOY_SHA}"
+  # 仅保留最近 10 个 SHA-tag（按创建时间），其余删除（不影响 latest）
+  docker images --format '{{.Repository}}:{{.Tag}} {{.CreatedAt}}' \
+    | awk '$1 ~ /^studio-bei-os:[0-9a-f]{7,40}$/ {print $0}' \
+    | sort -k2 -r \
+    | tail -n +11 \
+    | awk '{print $1}' \
+    | xargs -r docker rmi 2>/dev/null || true
+fi
 
 step "3/5 启动数据库（如未起）"
 docker compose up -d postgres
@@ -47,10 +67,14 @@ for i in {1..30}; do
   sleep 2
 done
 
-step "4/5 同步 schema (drizzle-kit push)"
+step "4/5 同步 schema (drizzle-kit migrate)"
+# 按 db/migrations/*.sql 顺序应用；首次切此流程前必须先跑 baseline-migrations.sh
+# 详见 docs/migrations.md
 docker compose --profile migrate run --rm migrate
 
 step "5/5 启动/重启 app"
+# 把 DEPLOY_SHA 透成 APP_VERSION 给容器，供 /api/health 暴露
+export APP_VERSION="${DEPLOY_SHA:-dev}"
 docker compose up -d app
 
 echo ""

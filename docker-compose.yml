@@ -39,6 +39,14 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runner
+      args:
+        # Sentry source map 上传（构建期）
+        SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
+        SENTRY_ORG: ${SENTRY_ORG:-}
+        SENTRY_PROJECT: ${SENTRY_PROJECT:-}
+        # 客户端 Sentry DSN（NEXT_PUBLIC_* 必须构建期可见）
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+        NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-dev}
     image: studio-bei-os:latest
     container_name: studio-bei-app
     restart: unless-stopped
@@ -47,6 +55,13 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
+      # /api/health 暴露该字段供监控；deploy.sh 启动前 export APP_VERSION=<git-sha>
+      APP_VERSION: ${APP_VERSION:-dev}
+      # Sentry 运行期（服务端）DSN；未配则 sentry.server.config.ts 自我 no-op
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ORG: ${SENTRY_ORG:-}
+      SENTRY_PROJECT: ${SENTRY_PROJECT:-}
+      NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
       DATABASE_URL: "postgres://studio_bei:${POSTGRES_PASSWORD}@postgres:5432/studio_bei"
       NEXT_PUBLIC_SITE_URL: "https://100yse.com"
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET required}
@@ -61,6 +76,9 @@ services:
       FEISHU_REDIRECT_URI: "https://100yse.com/api/auth/callback/feishu"
       BLOB_READ_WRITE_TOKEN: ${BLOB_READ_WRITE_TOKEN:-}
       CRON_SECRET: ${CRON_SECRET:-}
+      # Rate-limit：配齐 Upstash 走 Redis；未配自动 fallback 到进程内内存
+      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL:-}
+      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN:-}
     ports:
       # 仅 127.0.0.1 监听 → 只接受本机 nginx 反代，外网走不通
       - "127.0.0.1:13001:3000"

@@ -1,0 +1,13 @@
+[Unit]
+Description=Studio Bei OS · 每日 DB 备份到 Aliyun OSS
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/studio-bei-os
+ExecStart=/bin/bash /opt/studio-bei-os/scripts/backup-db.sh
+# 单次最长 20 min（含 dump + 加密 + 上传）
+TimeoutStartSec=20min
+StandardOutput=journal
+StandardError=journal

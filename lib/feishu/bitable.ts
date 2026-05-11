@@ -247,8 +247,8 @@ export async function pullBitableUpdates(since: Date): Promise<BitableLeadUpdate
       const lm = r.last_modified_time ? new Date(r.last_modified_time) : null;
       if (!lm || lm <= since) continue;
 
-      const statusLabel = flattenSelect(r.fields["状态"]);
-      const priorityLabel = flattenSelect(r.fields["优先级"]);
+      const statusLabel = flattenSelect(r.fields.状态);
+      const priorityLabel = flattenSelect(r.fields.优先级);
       const status = statusLabel ? STATUS_INVERSE[statusLabel] : undefined;
       const priority = priorityLabel ? PRIORITY_INVERSE[priorityLabel] : undefined;
       // 任意一个变了再回写；都没识别就跳过

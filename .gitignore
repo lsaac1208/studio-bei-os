@@ -45,6 +45,8 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /playwright/.cache/
+# auth.setup.ts 产出的登录态（由 admin 项目消费）
+/tests/.auth/
 
 # deploy archives
 studio-bei-os.tar.gz

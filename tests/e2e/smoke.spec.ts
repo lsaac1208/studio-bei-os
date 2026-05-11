@@ -14,6 +14,19 @@ import { expect, test } from "@playwright/test";
  *   - 飞书卡片回调（需要凭证）
  */
 
+test.describe("健康检查", () => {
+  test("/api/health 返回 200 + db up + 含 version/uptime", async ({ request }) => {
+    const res = await request.get("/api/health");
+    expect(res.status()).toBe(200);
+    const json = await res.json();
+    expect(json.ok).toBe(true);
+    expect(json.db).toBe("up");
+    expect(typeof json.version).toBe("string");
+    expect(typeof json.uptime).toBe("number");
+    expect(typeof json.timestamp).toBe("string");
+  });
+});
+
 test.describe("公开页面", () => {
   test("首页 200 + 标题与核心区块可见", async ({ page }) => {
     const res = await page.goto("/");
@@ -116,13 +129,15 @@ test.describe("后台鉴权", () => {
 });
 
 test.describe("飞书回调路由", () => {
-  test("/api/feishu/callback 处理 url_verification challenge", async ({ request }) => {
+  // R7: 生产构建 + 未配 FEISHU_VERIFICATION_TOKEN → fail-fast 拒绝
+  // CI 用 next start 跑（NODE_ENV=production），又故意不配 token → 应当 401
+  test("/api/feishu/callback 缺 FEISHU_VERIFICATION_TOKEN → 401（防裸奔）", async ({
+    request,
+  }) => {
     const res = await request.post("/api/feishu/callback", {
       data: { type: "url_verification", challenge: "smoke-test-challenge" },
     });
-    expect(res.status()).toBe(200);
-    const json = await res.json();
-    expect(json.challenge).toBe("smoke-test-challenge");
+    expect(res.status()).toBe(401);
   });
 });
 

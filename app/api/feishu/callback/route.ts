@@ -14,11 +14,14 @@ import { verifyFeishuCallback } from "@/lib/feishu/verify";
  *      → 路由到 handleCardAction，返回 { toast?, card? } 让飞书原地刷新卡片
  *
  * 签名校验：
- *   - 设置 FEISHU_VERIFICATION_TOKEN 后启用 HMAC-SHA256 校验
- *   - 未设置时跳过（仅本地 / 演示）
+ *   - HMAC-SHA256(timestamp + nonce + body, FEISHU_VERIFICATION_TOKEN)
+ *   - 生产环境（NODE_ENV=production）强制要求 token，缺失 fail-fast → 401
+ *   - 本地 dev 可不配
  *
  * 加密：
- *   - FEISHU_ENCRYPT_KEY 启用后 body 是 { encrypt } AES 密文，TODO 待解密
+ *   - 飞书后台启用「加密推送」时 body = { encrypt: <base64> }，AES-256-CBC
+ *   - key=sha256(FEISHU_ENCRYPT_KEY)，IV 是密文头 16 字节
+ *   - 收到加密 body 但未配 ENCRYPT_KEY → fail
  */
 export async function POST(req: NextRequest) {
   let payload: Record<string, unknown>;

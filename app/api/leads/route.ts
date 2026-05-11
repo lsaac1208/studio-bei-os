@@ -16,8 +16,8 @@ export async function POST(req: NextRequest) {
   const userAgent = req.headers.get("user-agent") ?? undefined;
   const referer = req.headers.get("referer") ?? undefined;
 
-  // 限流
-  const limited = rateLimit(`leads:${ip}`, { limit: 5, windowMs: 10 * 60 * 1000 });
+  // 限流（rateLimit 现在是 async：Upstash 有配走 Redis，否则内存 fallback）
+  const limited = await rateLimit(`leads:${ip}`, { limit: 5, windowMs: 10 * 60 * 1000 });
   if (!limited.ok) {
     return NextResponse.json(
       { ok: false, error: "提交太频繁，请稍后再试。" },

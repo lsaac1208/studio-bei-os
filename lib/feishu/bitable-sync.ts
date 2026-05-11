@@ -3,6 +3,7 @@ import "server-only";
 import { and, eq, isNull, lte, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { type Lead, leadActivities, leads } from "@/db/schema";
+import { scopedLogger } from "@/lib/logger";
 import { getSetting, setSetting } from "@/lib/settings";
 import {
   type BitableLeadUpdate,
@@ -10,6 +11,8 @@ import {
   pullBitableUpdates,
   pushLeadToBitable,
 } from "./bitable";
+
+const log = scopedLogger("bitable-sync");
 
 /**
  * Bitable 增量同步任务（cron 调用）。
@@ -89,7 +92,7 @@ export async function runBitableSync(): Promise<BitableSyncResult> {
         .where(eq(leads.id, lead.id));
       pushed += 1;
     } catch (err) {
-      console.warn(`[bitable-sync] push lead ${lead.id} failed:`, err);
+      log.warn({ err, leadId: lead.id }, "push lead failed");
       pushFailed += 1;
     }
   }
@@ -105,7 +108,7 @@ export async function runBitableSync(): Promise<BitableSyncResult> {
   try {
     updates = await pullBitableUpdates(lastPull);
   } catch (err) {
-    console.error("[bitable-sync] pull failed:", err);
+    log.error({ err }, "pull failed");
     pullFailed = 1;
   }
 
@@ -115,7 +118,7 @@ export async function runBitableSync(): Promise<BitableSyncResult> {
       const applied = await applyBitableUpdate(u);
       if (applied) pulledApplied += 1;
     } catch (err) {
-      console.warn(`[bitable-sync] apply ${u.recordId} failed:`, err);
+      log.warn({ err, recordId: u.recordId }, "apply update failed");
       pullFailed += 1;
     }
   }

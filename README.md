@@ -42,7 +42,7 @@ studio-bei-os/
 │   ├── blob.ts                      # Vercel Blob 上传
 │   ├── utils.ts                     # cn() helper
 │   └── feishu/                      # client / cards / bot / verify
-├── middleware.ts                    # /admin/* cookie 鉴权
+├── proxy.ts                         # /admin/* cookie 鉴权（Next 16 替代 middleware.ts）
 ├── drizzle.config.ts
 ├── biome.json
 ├── components.json                  # shadcn 配置
@@ -119,10 +119,40 @@ E2E_BASE_URL=http://localhost:3000 pnpm test:e2e
 
 ## 部署
 
-- 生产：阿里云 ECS（`100yse.com`），Docker 多阶段镜像 + `docker compose`
-- DB：本机 `postgres:17-alpine` 容器，独立 volume
-- 反向代理：宿主机 Nginx → `127.0.0.1:13001`
-- 一键部署：`scripts/deploy.sh`（构建 → tar → scp → 远端 `docker compose up -d`）
+**栈**：阿里云 ECS（`100yse.com`）+ Docker 多阶段镜像 + `docker compose` + 宿主 Nginx → `127.0.0.1:13001` + 本机 `postgres:17-alpine` 容器（独立 volume）。
+
+**触发**：`git push` → GitHub Actions → CI 绿 → `deploy.yml` rsync → ECS `docker compose up -d`。
+
+### 最小路径（零额外账号 / 密钥）
+
+只要 `.env` 里填好 **🔴 必填** 那一段（`POSTGRES_PASSWORD` / `BETTER_AUTH_SECRET` / `ADMIN_EMAIL` 等），剩下全部 ⚪ 可跳：
+
+| 模块 | 不配的效果 |
+|---|---|
+| Sentry | 整集成 no-op，错误只能 `docker logs` 看 |
+| Upstash Redis | 自动 fallback 进程内内存（单实例无差别） |
+| Aliyun OSS 备份 | DB 备份仍跑，本地 `/var/backups/studio-bei/` 裸 gzip，保留 7 天 |
+| Vercel Blob | cases 模块的图片上传禁用（旧图正常显示） |
+
+部署完跑一次：
+
+```bash
+ssh root@100yse.com
+cd /opt/studio-bei-os
+sudo bash deploy/systemd/install.sh                # 装备份 + 飞书 cron timer
+sudo systemctl start studio-bei-backup-db.service  # 立刻跑一次备份验证
+sudo nginx -t && sudo systemctl reload nginx       # 应用安全 headers
+bash scripts/baseline-migrations.sh                # 把现有 DB 标记为已应用首次 migration
+curl -s https://100yse.com/api/health | jq         # ok:true & db:up
+```
+
+### Day-2 升级路径
+
+按需查阅，可随时单独启用：
+
+- **DB 备份升级到加密 / OSS 异地副本** → `@docs/backup.md`
+- **schema 迁移**（生成、应用、回滚） → `@docs/migrations.md`
+- **Sentry 错误监控** → `@docs/sentry.md`
 
 ## 里程碑（详见 tech doc §14）
 

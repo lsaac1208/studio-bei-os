@@ -46,7 +46,6 @@ export function BodyEditor({ value, onChange }: Props) {
     },
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 外部 value 引用切换时同步；editor 不入依赖
   useEffect(() => {
     if (!editor) return;
     const current = editor.getJSON();

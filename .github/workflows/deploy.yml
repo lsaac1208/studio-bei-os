@@ -88,21 +88,34 @@ jobs:
 
       - name: Trigger deploy.sh on ECS
         uses: appleboy/ssh-action@v1
+        env:
+          # 短 SHA 作为镜像 tag；deploy.sh 会读取此变量给镜像打 tag 方便回滚
+          DEPLOY_SHA_FULL: ${{ github.event.workflow_run.head_sha || github.sha }}
+          # Sentry source map 上传（构建期）；未配置 secret 时为空字符串，build 仍成功
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: 22
+          # 透传到远端 shell（deploy.sh 会再 export 给 docker compose）
+          envs: DEPLOY_SHA_FULL,SENTRY_AUTH_TOKEN
           # 1.7GB ECS 构建 Next + Docker 比较慢，给足超时
           command_timeout: 30m
           script: |
             set -euo pipefail
 
+            export DEPLOY_SHA="${DEPLOY_SHA_FULL:0:7}"
+            export SENTRY_AUTH_TOKEN
+
             cd /opt/studio-bei-os
-            echo "==> 部署版本 (commit SHA): ${{ github.event.workflow_run.head_sha || github.sha }}"
+            echo "==> 部署版本 (commit SHA): ${DEPLOY_SHA_FULL} (短: ${DEPLOY_SHA})"
 
             echo "==> 执行 deploy.sh"
             bash scripts/deploy.sh
 
             echo "==> 部署完成，容器状态："
             docker compose ps
+            echo ""
+            echo "==> 已 tag 镜像（最近 10 个，可回滚）："
+            docker images studio-bei-os --format 'table {{.Tag}}\t{{.CreatedAt}}\t{{.Size}}' | head -12

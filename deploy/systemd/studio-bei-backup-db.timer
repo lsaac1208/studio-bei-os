@@ -1,0 +1,14 @@
+[Unit]
+Description=Studio Bei OS · 每天 04:30（北京时间）触发 DB 备份
+
+[Timer]
+# 4:30 是业务低谷；OnCalendar 用 Asia/Shanghai 解析
+OnCalendar=*-*-* 04:30:00 Asia/Shanghai
+# 如果机器在 4:30 没开（重启等），开机后立即补跑一次
+Persistent=true
+# 给个 ±5 min 随机延迟，错开多机器同时打 OSS（虽然我们只有一台，习惯性加）
+RandomizedDelaySec=5min
+Unit=studio-bei-backup-db.service
+
+[Install]
+WantedBy=timers.target

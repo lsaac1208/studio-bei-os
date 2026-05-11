@@ -40,14 +40,30 @@ ENV BETTER_AUTH_URL="http://localhost:3000"
 # 低内存 ECS 防 OOM：限制 next build webpack 内存上限 768MB
 ENV NODE_OPTIONS="--max-old-space-size=768"
 
+# Sentry 构建期变量（withSentryConfig 用）：
+#  - SENTRY_AUTH_TOKEN：上传 source map 到 sentry.io，仅构建期需要，**不进 runner**
+#  - NEXT_PUBLIC_*：会被 next 内联进客户端 bundle，必须构建期可见
+ARG SENTRY_AUTH_TOKEN=""
+ARG SENTRY_ORG=""
+ARG SENTRY_PROJECT=""
+ARG NEXT_PUBLIC_SENTRY_DSN=""
+ARG NEXT_PUBLIC_APP_VERSION="dev"
+ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN \
+    SENTRY_ORG=$SENTRY_ORG \
+    SENTRY_PROJECT=$SENTRY_PROJECT \
+    NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
+    NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
+
 RUN pnpm build
 
 # ============= Stage 3: migrator =============
-# 用于跑 drizzle-kit push，需要完整 node_modules + db/* + drizzle.config.ts
+# 跑 drizzle-kit migrate（按 db/migrations/*.sql 顺序应用，幂等）
+# 首次切到本流程前，必须用 scripts/baseline-migrations.sh 把现有 DB 标记为 0000_init 已应用
+# 详见 docs/migrations.md
 FROM builder AS migrator
 WORKDIR /app
 ENV NODE_ENV=production
-CMD ["./node_modules/.bin/drizzle-kit", "push", "--force"]
+CMD ["./node_modules/.bin/drizzle-kit", "migrate"]
 
 # ============= Stage 4: runner =============
 FROM node:22-alpine AS runner
