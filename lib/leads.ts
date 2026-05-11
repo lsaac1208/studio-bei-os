@@ -1,20 +1,13 @@
-import { createId } from "@paralleldrive/cuid2";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { type Lead, leadActivities, leads } from "@/db/schema";
 import { isBitableEnabled, pushLeadToBitable } from "@/lib/feishu/bitable";
 import { notifyNewLead } from "@/lib/feishu/bot";
+import { genLeadCode } from "@/lib/lead-code";
 import type { LeadCreateInput } from "@/lib/validators";
 
-/**
- * 生成可读线索编号：SB-2026-A1B2C3
- * 6 位 cuid 后缀（大写），冲突概率在我们这量级可忽略。
- */
-export function genLeadCode(): string {
-  const year = new Date().getFullYear();
-  const suffix = createId().slice(-6).toUpperCase();
-  return `SB-${year}-${suffix}`;
-}
+// 为既有调用方保留 `@/lib/leads` 路径
+export { genLeadCode } from "@/lib/lead-code";
 
 /**
  * 把通过校验的表单数据写入 leads + leadActivities。

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { genLeadCode } from "@/lib/leads";
+import { genLeadCode } from "@/lib/lead-code";
 
 describe("genLeadCode", () => {
   test("格式 SB-YYYY-XXXXXX（6 位大写后缀）", () => {
