@@ -12,8 +12,9 @@
  *   leads-todos.ts   待办 + 徽章计数
  *   leads-stats.ts   周报统计
  */
-export * from "./leads-list";
-export * from "./leads-kanban";
+
 export * from "./leads-detail";
-export * from "./leads-todos";
+export * from "./leads-kanban";
+export * from "./leads-list";
 export * from "./leads-stats";
+export * from "./leads-todos";

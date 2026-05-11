@@ -13,9 +13,7 @@ const nextConfig: NextConfig = {
 };
 
 // 仅当配置了 Sentry DSN 时才包裹，否则原样导出（本地 dev / 未启用 Sentry 的环境零负担）
-const enableSentry = Boolean(
-  process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN,
-);
+const enableSentry = Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN);
 
 export default enableSentry
   ? withSentryConfig(nextConfig, {

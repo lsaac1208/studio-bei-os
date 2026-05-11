@@ -102,10 +102,7 @@ function rateLimitMemory(key: string, options: RateLimitOptions): RateLimitResul
  *
  * 入参 key 约定 `<feature>:<scope>`，如 `leads:ip:1.2.3.4`。
  */
-export async function rateLimit(
-  key: string,
-  options: RateLimitOptions,
-): Promise<RateLimitResult> {
+export async function rateLimit(key: string, options: RateLimitOptions): Promise<RateLimitResult> {
   if (useUpstash) {
     const r = await getUpstashLimiter(options).limit(key);
     return {

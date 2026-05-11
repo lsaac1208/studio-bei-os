@@ -131,9 +131,7 @@ test.describe("后台鉴权", () => {
 test.describe("飞书回调路由", () => {
   // R7: 生产构建 + 未配 FEISHU_VERIFICATION_TOKEN → fail-fast 拒绝
   // CI 用 next start 跑（NODE_ENV=production），又故意不配 token → 应当 401
-  test("/api/feishu/callback 缺 FEISHU_VERIFICATION_TOKEN → 401（防裸奔）", async ({
-    request,
-  }) => {
+  test("/api/feishu/callback 缺 FEISHU_VERIFICATION_TOKEN → 401（防裸奔）", async ({ request }) => {
     const res = await request.post("/api/feishu/callback", {
       data: { type: "url_verification", challenge: "smoke-test-challenge" },
     });
