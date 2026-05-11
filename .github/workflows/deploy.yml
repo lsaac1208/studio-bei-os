@@ -70,6 +70,7 @@ jobs:
         #   .env.*        → 排除 .env.local / .env.production 等
         run: |
           rsync -az --delete --stats \
+            --no-owner --no-group \
             --exclude='.git/' \
             --exclude='node_modules/' \
             --exclude='.next/' \
