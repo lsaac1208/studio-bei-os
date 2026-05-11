@@ -1,0 +1,19 @@
+mutation UpdateStatusField($fieldId: ID!) {
+  updateProjectV2Field(input: {
+    fieldId: $fieldId
+    singleSelectOptions: [
+      { name: "Backlog",     color: GRAY,   description: "Not started" }
+      { name: "In Progress", color: YELLOW, description: "Actively working" }
+      { name: "In Review",   color: BLUE,   description: "PR open, waiting review/CI" }
+      { name: "Done",        color: GREEN,  description: "Merged / shipped" }
+    ]
+  }) {
+    projectV2Field {
+      ... on ProjectV2SingleSelectField {
+        id
+        name
+        options { id name }
+      }
+    }
+  }
+}
