@@ -57,11 +57,21 @@ ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN \
 RUN pnpm build
 
 # ============= Stage 3: migrator =============
-# 跑 drizzle-kit migrate（按 db/migrations/*.sql 顺序应用，幂等）
+# 跑 drizzle-kit migrate / seed*.ts。
+# 关键：从 deps 继承（含 node_modules），而不是从 builder 继承 —
+#   classic docker builder（无 buildx/buildkit）在两次独立的
+#   `docker compose build` 调用之间不可靠地复用 builder 阶段缓存，会触发
+#   migrator stage 重新跑一次 `pnpm build`，1.7G ECS 上等于第二轮 OOM 风险。
+#   migrator 不需要 .next 产物，只需 node_modules + 源码（含 db/、lib/、drizzle.config.ts）。
 # 首次切到本流程前，必须用 scripts/baseline-migrations.sh 把现有 DB 标记为 0000_init 已应用
 # 详见 docs/migrations.md
-FROM builder AS migrator
+FROM node:22-alpine AS migrator
 WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@10 --activate
+COPY --from=deps /app/node_modules ./node_modules
+# 源码全量拷（dockerignore 排除 .next / node_modules / .git 等）；
+# seed*.ts 引用 @/lib/* 需要 tsconfig + lib/，所以全拷最稳
+COPY . .
 ENV NODE_ENV=production
 CMD ["./node_modules/.bin/drizzle-kit", "migrate"]
 
