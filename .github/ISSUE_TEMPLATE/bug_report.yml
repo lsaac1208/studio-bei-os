@@ -1,0 +1,55 @@
+name: Bug report
+description: 报告一个 bug
+title: "[bug] "
+labels: ["type:bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢报告问题。请尽可能填写完整下面的信息，便于复现与定位。
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 现象描述
+      description: 一两句话讲清楚发生了什么
+      placeholder: 在 /admin/leads/[id] 点击「归档」按钮没有反应…
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 按顺序列出
+      placeholder: |
+        1. 访问 /admin/leads
+        2. 点开任意一条
+        3. 点「归档」
+        4. 期望状态变成 ARCHIVED，实际无反应
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望表现
+    validations:
+      required: false
+
+  - type: input
+    id: env
+    attributes:
+      label: 环境
+      placeholder: prod / staging / dev (windows 11, chrome 130)
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 相关日志 / 截图
+      description: 可粘贴 server 日志、浏览器 console、截图
+      render: shell
+    validations:
+      required: false

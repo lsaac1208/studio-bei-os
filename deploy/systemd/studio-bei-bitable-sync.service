@@ -1,0 +1,11 @@
+[Unit]
+Description=Studio Bei OS · 飞书多维表格双向同步
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/studio-bei-os
+ExecStart=/bin/bash /opt/studio-bei-os/scripts/run-bitable-sync.sh
+StandardOutput=journal
+StandardError=journal

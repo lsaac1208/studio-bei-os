@@ -1,0 +1,11 @@
+[Unit]
+Description=Studio Bei OS · 每周一 09:00（北京时间）触发飞书周报
+
+[Timer]
+# 周一 09:00 北京时间
+OnCalendar=Mon *-*-* 09:00:00 Asia/Shanghai
+Persistent=true
+Unit=studio-bei-briefing-weekly.service
+
+[Install]
+WantedBy=timers.target

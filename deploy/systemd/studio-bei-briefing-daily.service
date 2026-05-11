@@ -1,0 +1,14 @@
+[Unit]
+Description=Studio Bei OS · 飞书每日待办播报
+# 等 docker compose 起来再跑（避免 fresh boot 抢跑）
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/studio-bei-os
+# 用同一个脚本，复用其 .env 加载 + 鉴权逻辑
+ExecStart=/bin/bash /opt/studio-bei-os/scripts/test-cron-briefing.sh daily
+# 失败也不阻塞下一次（cron 性质）
+StandardOutput=journal
+StandardError=journal

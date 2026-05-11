@@ -1,0 +1,11 @@
+[Unit]
+Description=Studio Bei OS · 飞书每周线索周报
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/studio-bei-os
+ExecStart=/bin/bash /opt/studio-bei-os/scripts/test-cron-briefing.sh weekly
+StandardOutput=journal
+StandardError=journal

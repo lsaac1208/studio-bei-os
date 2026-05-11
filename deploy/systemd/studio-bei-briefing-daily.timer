@@ -1,0 +1,11 @@
+[Unit]
+Description=Studio Bei OS · 每日 09:30（北京时间）触发飞书待办播报
+
+[Timer]
+# OnCalendar 在 systemd 中按 Asia/Shanghai 解析
+OnCalendar=*-*-* 09:30:00 Asia/Shanghai
+Persistent=true
+Unit=studio-bei-briefing-daily.service
+
+[Install]
+WantedBy=timers.target

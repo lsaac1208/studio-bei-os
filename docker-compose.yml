@@ -1,0 +1,164 @@
+# ─────────────────────────────────────────────────────────────
+# Studio Bei OS · 生产部署
+# 在 ECS 上执行：
+#   cd /opt/studio-bei-os
+#   cp .env.example .env  &&  vim .env
+#   docker compose --profile migrate run --rm migrate    # 首次/有 schema 变更
+#   docker compose up -d --build app
+# ─────────────────────────────────────────────────────────────
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: studio-bei-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: studio_bei
+      POSTGRES_USER: studio_bei
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      # 中文 collate
+      LANG: en_US.utf8
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - studio-bei-net
+    # 不映射端口到 host，仅 docker network 内可达（最安全）
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U studio_bei -d studio_bei"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # 限内存，避免吃光 1.7GB 物理内存
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    image: studio-bei-os:latest
+    container_name: studio-bei-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgres://studio_bei:${POSTGRES_PASSWORD}@postgres:5432/studio_bei"
+      NEXT_PUBLIC_SITE_URL: "https://100yse.com"
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET required}
+      BETTER_AUTH_URL: "https://100yse.com"
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
+      ADMIN_LARK_OPEN_ID: ${ADMIN_LARK_OPEN_ID:-}
+      FEISHU_APP_ID: ${FEISHU_APP_ID:-}
+      FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
+      FEISHU_VERIFICATION_TOKEN: ${FEISHU_VERIFICATION_TOKEN:-}
+      FEISHU_ENCRYPT_KEY: ${FEISHU_ENCRYPT_KEY:-}
+      FEISHU_REDIRECT_URI: "https://100yse.com/api/auth/callback/feishu"
+      BLOB_READ_WRITE_TOKEN: ${BLOB_READ_WRITE_TOKEN:-}
+      CRON_SECRET: ${CRON_SECRET:-}
+    ports:
+      # 仅 127.0.0.1 监听 → 只接受本机 nginx 反代，外网走不通
+      - "127.0.0.1:13001:3000"
+    networks:
+      - studio-bei-net
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  # ── migrator：手动触发，跑 drizzle-kit push ──
+  # docker compose --profile migrate run --rm migrate
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+    image: studio-bei-os-migrator:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgres://studio_bei:${POSTGRES_PASSWORD}@postgres:5432/studio_bei"
+    networks:
+      - studio-bei-net
+    profiles:
+      - migrate
+
+  # ── seeder：手动触发，创建首个 admin user + 默认 settings ──
+  # docker compose --profile seed run --rm seed
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+    image: studio-bei-os-migrator:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgres://studio_bei:${POSTGRES_PASSWORD}@postgres:5432/studio_bei"
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: "https://100yse.com"
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
+      ADMIN_LARK_OPEN_ID: ${ADMIN_LARK_OPEN_ID:-}
+    networks:
+      - studio-bei-net
+    profiles:
+      - seed
+    command: ["./node_modules/.bin/tsx", "db/seed.ts"]
+
+  # ── seed-cases：可选，注入 3 个初始作品案例 ──
+  # docker compose --profile seed-cases run --rm seed-cases
+  seed-cases:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+    image: studio-bei-os-migrator:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgres://studio_bei:${POSTGRES_PASSWORD}@postgres:5432/studio_bei"
+    networks:
+      - studio-bei-net
+    profiles:
+      - seed-cases
+    command: ["./node_modules/.bin/tsx", "db/seed-cases.ts"]
+
+  # ── seed-landing：可选，注入首页 Services/Pricing/Process/Fit 默认内容块 ──
+  # docker compose --profile seed-landing run --rm seed-landing
+  seed-landing:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+    image: studio-bei-os-migrator:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgres://studio_bei:${POSTGRES_PASSWORD}@postgres:5432/studio_bei"
+    networks:
+      - studio-bei-net
+    profiles:
+      - seed-landing
+    command: ["./node_modules/.bin/tsx", "db/seed-landing.ts"]
+
+networks:
+  studio-bei-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

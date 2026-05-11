@@ -1,0 +1,50 @@
+name: Feature / 改进
+description: 新功能、产品改进、技术债清理
+title: "[feat] "
+labels: ["type:feat"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请尽可能说明 **背景 / 价值 / 验收标准**，便于排期与验收。
+
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景与价值
+      description: 解决什么问题 / 给谁用 / 不做会怎样
+      placeholder: 后台导出 CSV 时缺 bitable_record_id 列，运营对账困难…
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 实现思路（可选）
+      description: 如果心里有方案，简单说一下；不知道写"待定"
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 怎么算"做完了"。能勾选最佳。
+      placeholder: |
+        - [ ] /api/admin/leads/export 返回的 CSV 包含 bitable_record_id 列
+        - [ ] e2e 加一条断言
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 优先级（粗估）
+      options:
+        - P0 - 阻塞主流程
+        - P1 - 重要，本周做
+        - P2 - 一般
+        - P3 - 锦上添花
+      default: 2
+    validations:
+      required: false
