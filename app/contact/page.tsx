@@ -2,14 +2,52 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactForm } from "@/components/contact/ContactForm";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://100yse.com";
+
+const PAGE_DESCRIPTION =
+  "现在怎么接单、记录、跟进，哪里最浪费人工，希望什么时候上线，预算大概在哪个区间。";
+
 export const metadata: Metadata = {
   title: "把你的业务流程发给我",
-  description: "现在怎么接单、记录、跟进，哪里最浪费人工，希望什么时候上线，预算大概在哪个区间。",
+  description: PAGE_DESCRIPTION,
+  alternates: { canonical: "/contact" },
+  openGraph: {
+    type: "website",
+    url: "/contact",
+    title: "把你的业务流程发给我 · Studio Bei",
+    description: PAGE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary",
+    title: "把你的业务流程发给我 · Studio Bei",
+    description: PAGE_DESCRIPTION,
+  },
+};
+
+const contactJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "ContactPage",
+  url: `${SITE_URL}/contact`,
+  name: "把你的业务流程发给我 · Studio Bei",
+  description: PAGE_DESCRIPTION,
+  inLanguage: "zh-CN",
+  isPartOf: { "@type": "WebSite", "@id": `${SITE_URL}/#website` },
+  mainEntity: { "@type": "Organization", "@id": `${SITE_URL}/#organization` },
+  potentialAction: {
+    "@type": "CommunicateAction",
+    name: "提交业务需求",
+    target: `${SITE_URL}/contact`,
+  },
 };
 
 export default function ContactPage() {
   return (
     <div className="min-h-dvh bg-paper text-ink">
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: schema.org JSON-LD
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(contactJsonLd) }}
+      />
       <div className="mx-auto max-w-[820px] px-5 py-12 sm:px-8 lg:py-20">
         <header className="mb-12">
           <Link
