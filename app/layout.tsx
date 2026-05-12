@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Toaster } from "sonner";
 import "./globals.css";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://100yse.com";
 const SITE_NAME = "Studio Bei";
 const SITE_DESCRIPTION =
   "把生意里的预约、订单、库存、客户从混乱中接出来，跑在能看见、能修改、能延展的小系统上。";
