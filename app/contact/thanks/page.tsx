@@ -5,7 +5,12 @@ import { getSettings } from "@/lib/settings";
 export const metadata: Metadata = {
   title: "已收到你的需求",
   description: "我会尽快回复。",
-  robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false } },
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: { index: false, follow: false },
+  },
   alternates: { canonical: "/contact" },
 };
 
