@@ -8,18 +8,52 @@ import { listCases } from "@/lib/queries/cases";
 // 单次 RSC 渲染开销很小（几十 ms），小流量站点接受
 export const dynamic = "force-dynamic";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://100yse.com";
+
 export const metadata: Metadata = {
   title: "作品案例 · Studio Bei",
   description: "Studio Bei 完成的全栈业务系统：预约、订单、库存、官网询盘等真实交付。",
+  alternates: { canonical: "/cases" },
+  openGraph: {
+    type: "website",
+    url: "/cases",
+    title: "作品案例 · Studio Bei",
+    description: "Studio Bei 完成的全栈业务系统：预约、订单、库存、官网询盘等真实交付。",
+  },
 };
 
 export default async function CasesIndexPage() {
   const items = await listCases();
 
+  const collectionJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "作品案例 · Studio Bei",
+    description: "Studio Bei 完成的全栈业务系统：预约、订单、库存、官网询盘等真实交付。",
+    url: `${SITE_URL}/cases`,
+    inLanguage: "zh-CN",
+    isPartOf: { "@type": "WebSite", name: "Studio Bei", url: SITE_URL },
+    hasPart: items.map((c, idx) => ({
+      "@type": "Article",
+      position: idx + 1,
+      headline: c.title,
+      description: c.summary,
+      url: `${SITE_URL}/cases/${c.slug}`,
+      image: c.coverImage || undefined,
+      datePublished: c.createdAt?.toISOString(),
+      dateModified: c.updatedAt?.toISOString(),
+    })),
+  };
+
   return (
     <div className="min-h-dvh bg-paper text-ink">
       <Topbar />
       <main className="relative z-[1]">
+        <script
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: schema.org JSON-LD
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
+        />
         <section className="border-hairline border-b px-5 py-12 sm:py-16 lg:px-14">
           <div className="mx-auto max-w-[1280px]">
             <p className="font-mono text-[11px] text-mute tracking-[0.2em]">CASES</p>

@@ -10,6 +10,8 @@ import { getPublishedCaseBySlug } from "@/lib/queries/cases";
 // 公开案例详情：force-dynamic 避免 build 时 generateStaticParams 连 DB
 export const dynamic = "force-dynamic";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://100yse.com";
+
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
@@ -18,13 +20,31 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const c = await getPublishedCaseBySlug(slug);
   if (!c) return { title: "案例未找到 · Studio Bei" };
+
+  const url = `/cases/${c.slug}`;
+  const ogImages = c.coverImage
+    ? [{ url: c.coverImage, width: 1200, height: 630, alt: c.title }]
+    : undefined;
+
   return {
     title: `${c.title} · Studio Bei 案例`,
     description: c.summary,
+    alternates: { canonical: url },
     openGraph: {
+      type: "article",
+      url,
       title: c.title,
       description: c.summary,
-      images: c.coverImage ? [{ url: c.coverImage }] : undefined,
+      images: ogImages,
+      publishedTime: c.createdAt?.toISOString(),
+      modifiedTime: c.updatedAt?.toISOString(),
+      tags: c.tags,
+    },
+    twitter: {
+      card: ogImages ? "summary_large_image" : "summary",
+      title: c.title,
+      description: c.summary,
+      images: ogImages?.map((i) => i.url),
     },
   };
 }
@@ -34,10 +54,64 @@ export default async function CaseDetailPage({ params }: PageProps) {
   const c = await getPublishedCaseBySlug(slug);
   if (!c) notFound();
 
+  const caseUrl = `${SITE_URL}/cases/${c.slug}`;
+  const coverAbs = c.coverImage
+    ? c.coverImage.startsWith("http")
+      ? c.coverImage
+      : `${SITE_URL}${c.coverImage.startsWith("/") ? "" : "/"}${c.coverImage}`
+    : undefined;
+
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: c.title,
+    description: c.summary,
+    image: coverAbs ? [coverAbs] : undefined,
+    datePublished: c.createdAt?.toISOString(),
+    dateModified: c.updatedAt?.toISOString(),
+    author: { "@type": "Organization", name: "Studio Bei", url: SITE_URL },
+    publisher: {
+      "@type": "Organization",
+      name: "Studio Bei",
+      url: SITE_URL,
+    },
+    keywords: c.tags.length ? c.tags.join(",") : undefined,
+    articleSection: c.industry || undefined,
+    mainEntityOfPage: { "@type": "WebPage", "@id": caseUrl },
+    inLanguage: "zh-CN",
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "首页", item: SITE_URL },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "作品案例",
+        item: `${SITE_URL}/cases`,
+      },
+      { "@type": "ListItem", position: 3, name: c.title, item: caseUrl },
+    ],
+  };
+
   return (
     <div className="min-h-dvh bg-paper text-ink">
       <Topbar />
       <main className="relative z-[1]">
+        {/* JSON-LD: Article + BreadcrumbList */}
+        <script
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: schema.org JSON-LD
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: schema.org JSON-LD
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        />
+
         {/* ─── Cover ─── */}
         {c.coverImage && (
           <div className="border-hairline border-b">
